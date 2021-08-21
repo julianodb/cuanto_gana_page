@@ -39,6 +39,7 @@ export default {
     // https://go.nuxtjs.dev/axios
     '@nuxtjs/axios',
     'nuxt-buefy',
+    '@nuxt/content',
   ],
 
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
@@ -53,6 +54,11 @@ export default {
   generate: {
     routes() {
       return ["/name1", "/name2", "/name4"]
+    }
+  },
+  content: {
+    csv: {
+      delimiter: ";"
     }
   }
 }
