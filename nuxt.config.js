@@ -49,5 +49,10 @@ export default {
   },
   server: {
     port: 3001
+  },
+  generate: {
+    routes() {
+      return ["/name1", "/name2", "/name4"]
+    }
   }
 }

@@ -16,7 +16,7 @@
 export default {
   data() {
     return {
-      testNames: [ "name1", "name2", "name3"]
+      testNames: ["/name1", "/name2", "/name4"]
     }
   }
 }
