@@ -2,11 +2,11 @@
 <div class="container">
   <div class="list is-hoverable">
     <nuxt-link
-      v-for="name in testNames"
-      :key="name"
-      :to="name"
+      v-for="person in persons"
+      :key="person.name"
+      :to="person.slug"
       class = "list-item">
-        {{name}}
+        {{person.name}}
     </nuxt-link>
   </div>
 </div>
@@ -14,9 +14,10 @@
 
 <script>
 export default {
-  data() {
+  async asyncData({$content}) {
+    const names = await $content('names').fetch()
     return {
-      testNames: ["/name1", "/name2", "/name4"]
+      "persons": names
     }
   }
 }

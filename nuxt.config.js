@@ -40,6 +40,7 @@ export default {
     '@nuxtjs/axios',
     'nuxt-buefy',
     '@nuxt/content',
+    '~/modules/content-preprocessor'
   ],
 
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
@@ -53,7 +54,10 @@ export default {
   },
   generate: {
     routes() {
-      return ["/name1", "/name2", "/name4"]
+      const { $content } = require('@nuxt/content')
+      return $content('names').fetch().then(names => {
+        return names.map(n => n.slug)
+      })
     }
   },
   content: {

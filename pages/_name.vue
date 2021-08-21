@@ -1,14 +1,18 @@
 <template>
   <div class="container">
-    {{this.name}}
+    {{person.name}}
   </div>
 </template>
 
 <script>
 export default {
-  async asyncData({params}) {
-    const name = params.name
-    return { name }
+  asyncData({$content,params}) {
+    return $content('names')
+            .where({ slug: {$eq: params.name}})
+            .fetch()
+            .then(result => {
+              if(result.length == 1) return {person: result[0]}
+    })
   }
 }
 </script>
