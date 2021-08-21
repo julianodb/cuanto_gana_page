@@ -62,7 +62,8 @@ export default {
   },
   content: {
     csv: {
-      delimiter: ";"
+      delimiter: ";",
+      checkType:true
     }
   }
 }

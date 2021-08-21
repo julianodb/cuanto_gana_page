@@ -1,18 +1,25 @@
 <template>
   <div class="container">
-    {{person.name}}
+    {{person}}
+    {{money}}
   </div>
 </template>
 
 <script>
 export default {
-  asyncData({$content,params}) {
-    return $content('names')
+  async asyncData({$content,params}) {
+    const person = await $content('names')
             .where({ slug: {$eq: params.name}})
             .fetch()
             .then(result => {
-              if(result.length == 1) return {person: result[0]}
+              if(result.length == 1) return result[0]
     })
+    const money = await $content(`${params.name}`).fetch()
+
+    return {
+      person,
+      money
+    }
   }
 }
 </script>
