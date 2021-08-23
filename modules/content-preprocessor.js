@@ -14,13 +14,9 @@ export default function ContentPreprocessorModule() {
     consola.info("Preprocessing content")
     const sample = await $content('sample').only(["body"]).fetch()
 
-    const names = sample.body.map(a => {
-      return {
-        name: extract_name(a),
-        slug: create_slug(extract_name(a))
-      }
-    })
-    fs.writeFile('./content/names.json', JSON.stringify(names), error_handler)
+    const names = new Set(sample.body.map(extract_name))
+    const nameObjects = Array.from(names).map(name => {return {name:name, slug:create_slug(name)}})
+    fs.writeFile('./content/names.json', JSON.stringify(nameObjects), error_handler)
 
     const moneys = sample.body.reduce((acc,cur) => {
       const nameSlug = create_slug(extract_name(cur))
