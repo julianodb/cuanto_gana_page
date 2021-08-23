@@ -23,16 +23,16 @@ export default function ContentPreprocessorModule() {
     fs.writeFile('./content/names.json', JSON.stringify(names), error_handler)
 
     const moneys = sample.body.reduce((acc,cur) => {
-      const slug = create_slug(extract_name(cur))
-      const previousArray = (acc[slug] || [])
+      const nameSlug = create_slug(extract_name(cur))
+      const previousArray = (acc[nameSlug] || [])
       const contentWithSlug = {...cur, ["slug"]: previousArray.length.toString() }
-      return {...acc, [slug]: [...previousArray, contentWithSlug]}
+      return {...acc, [nameSlug]: [...previousArray, contentWithSlug]}
     },{})
 
-    for (let slug in moneys) {
-      fs.mkdir(`./content/${slug}`,{recursive:true},err => {
+    for (let nameSlug in moneys) {
+      fs.mkdir(`./content/${nameSlug}`,{recursive:true},err => {
         if(err) return error_handler(err)
-        fs.writeFile(`./content/${slug}/money.json`, JSON.stringify(moneys[slug]), error_handler)
+        fs.writeFile(`./content/${nameSlug}/money.json`, JSON.stringify(moneys[nameSlug]), error_handler)
       })
     }
     consola.success("Preprocessed content generated")
