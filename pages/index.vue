@@ -1,14 +1,18 @@
 <template>
 <div class="container">
-  <div class="list is-hoverable">
-    <nuxt-link
-      v-for="person in persons"
-      :key="person.name"
-      :to="person.slug"
-      class = "list-item">
-        {{person.name}}
-    </nuxt-link>
-  </div>
+  <b-menu>
+    <b-menu-list label="últimas personas consultadas">
+      <b-menu-item
+        icon="account"
+        tag="nuxt-link"
+        :label="person.name"
+        v-for="person in persons"
+        :key="person.name"
+        :to="person.slug">
+              {{person.name}}
+      </b-menu-item>
+    </b-menu-list>
+  </b-menu>
 </div>
 </template>
 
