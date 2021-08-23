@@ -24,7 +24,9 @@ export default function ContentPreprocessorModule() {
 
     const moneys = sample.body.reduce((acc,cur) => {
       const slug = create_slug(extract_name(cur))
-      return {...acc, [slug]: [...(acc[slug] || []), {...cur, ["slug"]: (acc[slug] || []).length.toString() }]}
+      const previousArray = (acc[slug] || [])
+      const contentWithSlug = {...cur, ["slug"]: previousArray.length.toString() }
+      return {...acc, [slug]: [...previousArray, contentWithSlug]}
     },{})
 
     for (let slug in moneys) {

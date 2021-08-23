@@ -14,7 +14,7 @@ export default {
             .then(result => {
               if(result.length == 1) return result[0]
     })
-    const money = await $content(`${params.name}`).fetch()
+    const money = await $content(`${params.name}/money`, { deep: true }).fetch()
 
     return {
       person,
