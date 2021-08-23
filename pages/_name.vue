@@ -1,8 +1,7 @@
 <template>
   <div class="container">
     <h1 class="title is-1"> {{name}} </h1>
-    <div> {{money}} </div>
-    <bar-chart :chartData="paymentDataset" options="" />
+    <bar-chart :chartData="paymentDataset" :options="chartOptions" />
   </div>
 </template>
 
@@ -42,17 +41,42 @@ export default {
   data: function() {
     return {
       monthsToShow: 10,
-      currentMonth: 1
+      currentMonth: 1,
+      chartOptions: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
     }
   },
   computed: {
     paymentDataset: function() {
       return {
         labels: this.money.map(m=>m.month),
-        datasets: [{
-          label: 'Remuneración Bruta Mensual',
-          data: this.money.map(m=>m.salaryBeforeTaxes),
-          }]
+        datasets: [
+          {
+            label: 'Remuneración Bruta Mensual',
+            data: this.money.map(m=>m.salaryBeforeTaxes),
+          },
+          {
+            label: 'Remuneración Liquida Mensual',
+            data: this.money.map(m=>m.salaryAfterTaxes),
+          },
+          {
+            label: 'Pago extra diurnas',
+            data: this.money.map(m=>m.bonusDayTime),
+          },
+          {
+            label: 'Pago extra nocturnas',
+            data: this.money.map(m=>m.bonusNightTime),
+          },
+          {
+            label: 'Pago extra festivas',
+            data: this.money.map(m=>m.bonusHolidays),
+          }
+          ]
       }
     }
   }
