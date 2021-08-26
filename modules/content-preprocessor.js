@@ -14,14 +14,13 @@ export default function ContentPreprocessorModule() {
   const nameObjects = [];
   const tempMap = new Map();
 
-  const error_handler = err => {if(err) consola.error(err)}
-
   const { $content } = require('@nuxt/content')
   const fs = require('fs/promises')
 
   this.nuxt.hook('build:before', async builder => {
     consola.info("Preprocessing content")
     const process_dump = dump => {
+      consola.info("Preprocessing file ", dump.path)
       const namesWithRepetitions = dump.body.map(extract_name)
       namesWithRepetitions.forEach( (nameObj) => {
         if(!tempMap.has(nameObj.slug)){
@@ -33,7 +32,7 @@ export default function ContentPreprocessorModule() {
     }
     return await $content('')
       .where({extension:{$eq:".csv"}})
-      .only(["body"])
+      .only(["body","path"])
       .fetch()
       .then(dumps => !Array.isArray(dumps)? process_dump(dumps) : Promise.all(dumps.map(process_dump)))
       .then(() => consola.success("Preprocessed content generated"))
