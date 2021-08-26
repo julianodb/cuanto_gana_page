@@ -19,7 +19,7 @@
 <script>
 export default {
   async asyncData({$content}) {
-    const names = await $content('names').fetch()
+    const names = await $content('names').skip(10).limit(3).fetch()
     return {
       "persons": names
     }
