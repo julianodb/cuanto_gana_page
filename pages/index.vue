@@ -5,11 +5,11 @@
       <b-menu-item
         icon="account"
         tag="nuxt-link"
-        :label="person.name"
+        :label="person.fullname"
         v-for="person in persons"
-        :key="person.name"
+        :key="person.slug"
         :to="person.slug">
-              {{person.name}}
+              {{person.fullname}}
       </b-menu-item>
     </b-menu-list>
   </b-menu>

@@ -2,35 +2,40 @@ import consola from 'consola'
 
 export default function ContentPreprocessorModule() {
 
-  const extract_name = (obj) => [obj.Nombres, obj.Paterno, obj.Materno].join(" ")
+  const extract_fullname = (obj) => [obj.Nombres, obj.Paterno, obj.Materno].join(" ")
   const create_slug = (str) => str.replace(/\s+/g,"_").toLowerCase()
+  const extract_name = (obj) => ({
+    name:obj.Nombres,
+    surname1:obj.Paterno,
+    surname2:obj.Materno,
+    fullname:extract_fullname(obj),
+    slug:create_slug(extract_fullname(obj))
+  })
+  const nameObjects = [];
+  const tempMap = new Map();
 
   const error_handler = err => {if(err) consola.error(err)}
 
   const { $content } = require('@nuxt/content')
-  const fs = require('fs')
+  const fs = require('fs/promises')
 
   this.nuxt.hook('build:before', async builder => {
     consola.info("Preprocessing content")
-    const sample = await $content('sample').only(["body"]).fetch()
-
-    const names = new Set(sample.body.map(extract_name))
-    const nameObjects = Array.from(names).map(name => {return {name:name, slug:create_slug(name)}})
-    fs.writeFile('./content/names.json', JSON.stringify(nameObjects), error_handler)
-
-    const moneys = sample.body.reduce((acc,cur) => {
-      const nameSlug = create_slug(extract_name(cur))
-      const previousArray = (acc[nameSlug] || [])
-      const contentWithSlug = {...cur, ["slug"]: previousArray.length.toString() }
-      return {...acc, [nameSlug]: [...previousArray, contentWithSlug]}
-    },{})
-
-    for (let nameSlug in moneys) {
-      fs.mkdir(`./content/${nameSlug}`,{recursive:true},err => {
-        if(err) return error_handler(err)
-        fs.writeFile(`./content/${nameSlug}/money.json`, JSON.stringify(moneys[nameSlug]), error_handler)
+    const process_dump = dump => {
+      const namesWithRepetitions = dump.body.map(extract_name)
+      namesWithRepetitions.forEach( (nameObj) => {
+        if(!tempMap.has(nameObj.slug)){
+            tempMap.set(nameObj.slug, true);
+            nameObjects.push(nameObj)
+        }
       })
+      return fs.writeFile('./content/names.json', JSON.stringify(nameObjects))
     }
-    consola.success("Preprocessed content generated")
+    return await $content('')
+      .where({extension:{$eq:".csv"}})
+      .only(["body"])
+      .fetch()
+      .then(dumps => !Array.isArray(dumps)? process_dump(dumps) : Promise.all(dumps.map(process_dump)))
+      .then(() => consola.success("Preprocessed content generated"))
   })
 }

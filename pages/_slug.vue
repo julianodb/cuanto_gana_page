@@ -1,6 +1,7 @@
 <template>
   <div class="container">
     <h1 class="title is-1"> {{name}} </h1>
+    <div> {{money}} </div>
     <bar-chart :chartData="paymentDataset" :options="chartOptions" />
   </div>
 </template>
@@ -11,16 +12,22 @@ export default {
   components: { BarChart },
   async asyncData({$content,params}) {
     const person = await $content('names')
-            .where({ slug: {$eq: params.name}})
+            .where({ slug: {$eq: params.slug}})
             .fetch()
             .then(result => {
               if(result.length >= 1) return result[0]
     })
-    const payments = await $content(`${params.name}/money`, { deep: true })
-            .fetch()
-            .then(result => {
-              return Array.isArray(result) ? result : [result]
+    const payments = await $content('', { deep:true })
+            .where({
+              extension:{$eq:".csv"}
             })
+            .fetch()
+            .then(files => files.map(file=>file.body).flat() )
+            .then(result => result.filter(payment =>
+                payment.Nombres === person.name &&
+                payment.Paterno === person.surname1 &&
+                payment.Materno === person.surname2
+            ))
             .then(result => result.map(payment => {
               return {
                 year: payment.anyo,
@@ -34,7 +41,7 @@ export default {
             }))
 
     return {
-      name: person.name,
+      name: person.fullname,
       money: payments
     }
   },
