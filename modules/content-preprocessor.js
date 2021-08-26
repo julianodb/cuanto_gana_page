@@ -14,6 +14,13 @@ export default function ContentPreprocessorModule() {
   const nameObjects = [];
   const nameTempMap = new Map();
 
+  const safe_append_multi_level_object = (obj, ...levels) => {
+    consola.info(levels.length)
+    if(levels.length <= 1) return obj
+    if(levels.length == 2) return {...obj, [levels[0]]: levels[1]}
+    if(levels.length > 2) return {...obj, [levels[0]]: safe_append_multi_level_object((obj[levels[0]] || {}), ...levels.slice(1))}
+  }
+
   const month_to_number = new Map([
     ["Enero", 1],
     ["Febrero", 2],
@@ -33,7 +40,7 @@ export default function ContentPreprocessorModule() {
     month: month_to_number.get(obj.Mes) ?? 0,
     monthString: obj.Mes
   })
-  const paymentObjects = {};
+  var paymentObjects = {};
 
   const { $content } = require('@nuxt/content')
   const fs = require('fs/promises')
@@ -52,7 +59,7 @@ export default function ContentPreprocessorModule() {
       dump.body.forEach( (payment) => {
         const slug = create_slug(extract_fullname(payment))
         const date = extract_date(payment)
-        paymentObjects[slug] = {...(paymentObjects[slug] || {}), [date.year] : {[date.month] : payment}}
+        paymentObjects = safe_append_multi_level_object(paymentObjects, slug, date.year, date.month, payment)
       })
     }
     return await $content('')
