@@ -15,7 +15,6 @@ export default function ContentPreprocessorModule() {
   const nameTempMap = new Map();
 
   const safe_append_multi_level_object = (obj, ...levels) => {
-    consola.info(levels.length)
     if(levels.length <= 1) return obj
     if(levels.length == 2) return {...obj, [levels[0]]: levels[1]}
     if(levels.length > 2) return {...obj, [levels[0]]: safe_append_multi_level_object((obj[levels[0]] || {}), ...levels.slice(1))}
