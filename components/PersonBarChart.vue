@@ -2,11 +2,11 @@
 import { Bar } from 'vue-chartjs'
 
 const graphColors = [
-  'rgba(255, 99, 132, 0.2)',
-  'rgba(255, 159, 64, 0.2)',
-  'rgba(255, 205, 86, 0.2)',
-  'rgba(75, 192, 192, 0.2)',
   'rgba(54, 162, 235, 0.2)',
+  'rgba(75, 192, 192, 0.2)',
+  'rgba(255, 205, 86, 0.2)',
+  'rgba(255, 159, 64, 0.2)',
+  'rgba(255, 99, 132, 0.2)',
   'rgba(153, 102, 255, 0.2)',
   'rgba(201, 203, 207, 0.2)'
 ]
@@ -22,19 +22,17 @@ export default {
       this.renderChart(this.paymentDataset, this.options)
     }
   },
-  data: function() {
-    return {
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
+  data: () => ({
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
         }
       }
     }
-  },
+  }),
   computed: {
-    onlyPayments: function() {
+    paymentsArray: function() {
       return Object.entries(this.money)
         .reduce((acc,[year, monthObj])=> [...acc,
           Object.entries(monthObj)
@@ -50,32 +48,31 @@ export default {
     },
     paymentDataset: function() {
       return {
-        labels: Object.entries(this.money)
-          .reduce((acc,[year, monthObj])=>[...acc,Object.entries(monthObj).map(([month,payment])=> [payment.Mes, year].join(" / "))],[]).flat(),
+        labels: this.paymentsArray.map(payment => [payment.month, payment.year].join(" / ")),
         datasets: [
           {
             label: 'Remuneración Bruta Mensual',
-            data: this.onlyPayments.map(m=>m.salaryBeforeTaxes),
+            data: this.paymentsArray.map(m=>m.salaryBeforeTaxes),
             backgroundColor: graphColors[0]
           },
           {
             label: 'Remuneración Liquida Mensual',
-            data: this.onlyPayments.map(m=>m.salaryAfterTaxes),
+            data: this.paymentsArray.map(m=>m.salaryAfterTaxes),
             backgroundColor: graphColors[1]
           },
           {
             label: 'Pago extra diurnas',
-            data: this.onlyPayments.map(m=>m.bonusDayTime),
+            data: this.paymentsArray.map(m=>m.bonusDayTime),
             backgroundColor: graphColors[2]
           },
           {
             label: 'Pago extra nocturnas',
-            data: this.onlyPayments.map(m=>m.bonusNightTime),
+            data: this.paymentsArray.map(m=>m.bonusNightTime),
             backgroundColor: graphColors[3]
           },
           {
             label: 'Pago extra festivas',
-            data: this.onlyPayments.map(m=>m.bonusHolidays),
+            data: this.paymentsArray.map(m=>m.bonusHolidays),
             backgroundColor: graphColors[4]
           }
           ]

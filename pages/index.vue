@@ -2,7 +2,7 @@
 <div class="container">
   <div class="container">
     <b-field label="Name">
-        <b-input v-model="name"></b-input>
+        <b-input v-model="searchedName"></b-input>
     </b-field>
   </div>
   <div
@@ -33,12 +33,12 @@ export default {
   },
   data: () => ({
     money: {},
-    name: "",
+    searchedName: "",
     persons: []
   }),
   watch: {
-    async name() {
-      const names = await this.$content('names').search('fullname',this.name).limit(10).fetch()
+    async searchedName() {
+      const names = await this.$content('names').search('fullname',this.searchedName).limit(10).fetch()
       console.log(names)
       this.persons = names
     }
