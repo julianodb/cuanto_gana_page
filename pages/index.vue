@@ -1,18 +1,18 @@
 <template>
 <div class="container">
-  <b-menu>
-    <b-menu-list label="últimas personas consultadas">
-      <b-menu-item
+  <div
+    class="columns buttons"
+    v-for="person in persons"
+    :key="person.slug">
+      <b-button
+        class="column is-full"
+        type="is-primary"
         icon="account"
-        tag="nuxt-link"
-        :label="person.fullname"
-        v-for="person in persons"
-        :key="person.slug"
-        :to="person.slug">
+        v-on:click="getMoney(person.slug)">
               {{person.fullname}}
-      </b-menu-item>
-    </b-menu-list>
-  </b-menu>
+      </b-button>
+  </div>
+  <person-bar-chart :money="money" />
 </div>
 </template>
 
@@ -23,6 +23,15 @@ export default {
     return {
       "persons": names
     }
-  }
+  },
+  methods: {
+    async getMoney(slug) {
+      const data = await this.$http.$get(`/${slug}/payments.json`)
+      this.money = data
+    }
+  },
+  data: () => ({
+    money: {}
+  })
 }
 </script>
