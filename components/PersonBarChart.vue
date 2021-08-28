@@ -15,12 +15,10 @@ export default {
   extends: Bar,
   props: ['money'],
   mounted () {
-    console.log(this.paymentDataset)
     this.renderChart(this.paymentDataset, this.options)
   },
   watch: {
     money() {
-      console.log(this.paymentDataset)
       this.renderChart(this.paymentDataset, this.options)
     }
   },
@@ -52,7 +50,8 @@ export default {
     },
     paymentDataset: function() {
       return {
-        labels: Object.entries(this.money).reduce((acc,[year, monthObj])=>[...acc,Object.entries(monthObj).map(([month,payment])=> [year, month].join(" "))],[]).flat(),
+        labels: Object.entries(this.money)
+          .reduce((acc,[year, monthObj])=>[...acc,Object.entries(monthObj).map(([month,payment])=> [payment.Mes, year].join(" / "))],[]).flat(),
         datasets: [
           {
             label: 'Remuneración Bruta Mensual',
