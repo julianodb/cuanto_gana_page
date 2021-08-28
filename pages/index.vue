@@ -25,12 +25,6 @@
 
 <script>
 export default {
-  async asyncData({$content}) {
-    const names = await $content('names').skip(10).limit(3).fetch()
-    return {
-      "persons": names
-    }
-  },
   methods: {
     async getMoney(slug) {
       const data = await this.$http.$get(`/${slug}/payments.json`)
@@ -39,7 +33,15 @@ export default {
   },
   data: () => ({
     money: {},
-    name: ""
-  })
+    name: "",
+    persons: []
+  }),
+  watch: {
+    async name() {
+      const names = await this.$content('names').search('fullname',this.name).limit(10).fetch()
+      console.log(names)
+      this.persons = names
+    }
+  }
 }
 </script>

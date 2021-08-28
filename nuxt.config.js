@@ -60,6 +60,7 @@ export default {
     csv: {
       delimiter: ";",
       checkType:true
-    }
+    },
+    fullTextSearchFields: ['fullname']
   }
 }
