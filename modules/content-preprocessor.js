@@ -68,7 +68,7 @@ export default function ContentPreprocessorModule() {
       .then(files => Promise.all(files.map(file => {
         consola.info("Processing file ", file)
         return fs.readFile(path.join(content_src,file), 'latin1')
-          .then(fileContent => csv().fromString(fileContent))
+          .then(fileContent => csv({delimiter: ";",checkType:true}).fromString(fileContent))
           .then(process_dump)
         }))
       )

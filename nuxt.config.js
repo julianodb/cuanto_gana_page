@@ -57,10 +57,6 @@ export default {
     }
   },
   content: {
-    csv: {
-      delimiter: ";",
-      checkType:true
-    },
     fullTextSearchFields: ['fullname']
   }
 }
