@@ -13,7 +13,7 @@
           <b-button
             expanded
             type="is-primary"
-            icon="account"
+            icon-left="account"
             v-on:click="getMoney(person.slug)">
                   {{person.fullname}}
           </b-button>
@@ -27,7 +27,7 @@
 export default {
   methods: {
     async getMoney(slug) {
-      const data = await this.$http.$get(`/${slug}/payments.json`)
+      const data = await this.$http.$get(`/person/${slug}/payments.json`)
       this.money = data
     }
   },

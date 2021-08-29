@@ -43,36 +43,43 @@ export default function ContentPreprocessorModule() {
 
   const { $content } = require('@nuxt/content')
   const fs = require('fs/promises')
+  const path = require('path')
+  const csv=require('csvtojson')
 
   this.nuxt.hook('build:before', async builder => {
     consola.info("Preprocessing content")
     const process_dump = dump => {
-      consola.info("Processing file ", dump.path)
-      const namesWithRepetitions = dump.body.map(extract_name)
+      const namesWithRepetitions = dump.map(extract_name)
       namesWithRepetitions.forEach( (nameObj) => {
         if(!nameTempMap.has(nameObj.slug)){
             nameTempMap.set(nameObj.slug, true);
             nameObjects.push(nameObj)
         }
       })
-      dump.body.forEach( (payment) => {
+      dump.forEach( (payment) => {
         const slug = create_slug(extract_fullname(payment))
         const date = extract_date(payment)
         paymentObjects = safe_append_multi_level_object(paymentObjects, slug, date.year, date.month, payment)
       })
     }
-    return await $content('')
-      .where({extension:{$eq:".csv"}})
-      .only(["body","path"])
-      .fetch()
-      .then(dumps => !Array.isArray(dumps)? process_dump(dumps) : dumps.map(process_dump))
-      .then(() => fs.writeFile('./static/names.json', JSON.stringify(nameObjects)))
+    const content_src = 'content_src'
+    return await fs.readdir(content_src)
+      .then(files => files.filter(file => path.extname(file).toLowerCase() === ".csv"))
+      .then(files => Promise.all(files.map(file => {
+        consola.info("Processing file ", file)
+        return fs.readFile(path.join(content_src,file), 'latin1')
+          .then(fileContent => csv().fromString(fileContent))
+          .then(process_dump)
+        }))
+      )
+      .then(() => fs.writeFile('./content/names.json', JSON.stringify(nameObjects)))
       .then(() => Promise.all(Object.entries(paymentObjects)
         .map(([slug, payment]) =>
-          fs.mkdir(`./static/${slug}`, {recursive:true})
-          .then(() => fs.writeFile(`./static/${slug}/payments.json`, JSON.stringify(payment)))
+          fs.mkdir(`./static/person/${slug}`, {recursive:true})
+          .then(() => fs.writeFile(`./static/person/${slug}/payments.json`, JSON.stringify(payment)))
         )
       ))
       .then(() => consola.success("Preprocessed content generated"))
+
   })
 }
