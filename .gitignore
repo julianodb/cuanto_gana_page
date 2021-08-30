@@ -91,3 +91,4 @@ sw.*
 
 # Processed content
 content/*.json
+static/person
