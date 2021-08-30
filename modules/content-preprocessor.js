@@ -11,7 +11,6 @@ export default function ContentPreprocessorModule() {
     fullname:extract_fullname(obj),
     slug:create_slug(extract_fullname(obj))
   })
-  const nameObjects = [];
   const nameTempMap = new Map();
 
   const safe_append_multi_level_object = (obj, ...levels) => {
@@ -43,6 +42,7 @@ export default function ContentPreprocessorModule() {
 
   const { $content } = require('@nuxt/content')
   const fs = require('fs/promises')
+  const {createReadStream, createWriteStream} = require('fs')
   const path = require('path')
   const csv=require('csvtojson')
 
@@ -53,7 +53,7 @@ export default function ContentPreprocessorModule() {
       namesWithRepetitions.forEach( (nameObj) => {
         if(!nameTempMap.has(nameObj.slug)){
             nameTempMap.set(nameObj.slug, true);
-            nameObjects.push(nameObj)
+            //nameObjects.push(nameObj)
         }
       })
       dump.forEach( (payment) => {
@@ -62,24 +62,44 @@ export default function ContentPreprocessorModule() {
         paymentObjects = safe_append_multi_level_object(paymentObjects, slug, date.year, date.month, payment)
       })
     }
+    const namesFileWriteStream = createWriteStream('./content/names.json',{flags: "w+"})
+    const paymentWriterStreams = {}
     const content_src = 'content_src'
     return await fs.readdir(content_src)
       .then(files => files.filter(file => path.extname(file).toLowerCase() === ".csv"))
       .then(files => Promise.all(files.map(file => {
         consola.info("Processing file ", file)
-        return fs.readFile(path.join(content_src,file), 'latin1')
-          .then(fileContent => csv({delimiter: ";",checkType:true}).fromString(fileContent))
-          .then(process_dump)
-        }))
-      )
-      .then(() => fs.writeFile('./content/names.json', JSON.stringify(nameObjects)))
-      .then(() => Promise.all(Object.entries(paymentObjects)
-        .map(([slug, payment]) =>
-          fs.mkdir(`./static/person/${slug}`, {recursive:true})
-          .then(() => fs.writeFile(`./static/person/${slug}/payments.json`, JSON.stringify(payment)))
-        )
-      ))
+        namesFileWriteStream.write('[')
+        return new Promise((resolve,reject) => {
+          const readStream = createReadStream(path.join(content_src,file), 'latin1')
+          readStream
+            .pipe(csv({delimiter: ";",checkType:true}))
+            .on('data', async (data) => {
+              const payment = JSON.parse(data)
+              const nameObj = extract_name(payment)
+              if(!nameTempMap.has(nameObj.slug)){
+                nameTempMap.set(nameObj.slug, true);
+                if(nameTempMap.size == 1) namesFileWriteStream.write(JSON.stringify(nameObj))
+                else namesFileWriteStream.write(",".concat(JSON.stringify(nameObj)))
+                if(nameTempMap.size % 1000 == 0) consola.info("processed",nameTempMap.size,"names")
+              }
+              const slug = create_slug(extract_fullname(payment))
+              const date = extract_date(payment)
+              if (!(slug in paymentWriterStreams)) {
+                paymentWriterStreams[slug] = await fs.mkdir(`./static/person/${slug}`, {recursive:true})
+                  .then(() => createWriteStream(`./static/person/${slug}/payments.json`,{flags: "w+"}))
+                paymentWriterStreams[slug].write("[")
+                paymentWriterStreams[slug].write(JSON.stringify(payment))
+              } else {
+                paymentWriterStreams[slug].write(",".concat(JSON.stringify(payment)))
+              }
+            })
+            .on('end', resolve)
+            .on('error', reject)
+        })
+      })))
+      .then(() => namesFileWriteStream.write("]"))
+      .then(() => Object.entries(paymentWriterStreams).map(([slug, stream]) => stream.write("]")))
       .then(() => consola.success("Preprocessed content generated"))
-
   })
 }
