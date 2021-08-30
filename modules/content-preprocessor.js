@@ -41,8 +41,8 @@ export default function ContentPreprocessorModule() {
   var paymentObjects = {};
 
   const { $content } = require('@nuxt/content')
-  const fs = require('fs/promises')
-  const {createReadStream, createWriteStream} = require('fs')
+  const fs = require('graceful-fs').promises
+  const {createReadStream, createWriteStream} = require('graceful-fs')
   const path = require('path')
   const csv=require('csvtojson')
 
@@ -87,19 +87,17 @@ export default function ContentPreprocessorModule() {
               const date = extract_date(payment)
               if (!(slug in paymentWriterStreams)) {
                 paymentWriterStreams[slug] = await fs.mkdir(`./static/person/${slug}`, {recursive:true})
-                  .then(() => createWriteStream(`./static/person/${slug}/payments.json`,{flags: "w+"}))
-                paymentWriterStreams[slug].write("[")
-                paymentWriterStreams[slug].write(JSON.stringify(payment))
-              } else {
-                paymentWriterStreams[slug].write(",".concat(JSON.stringify(payment)))
+                  .then(() => true)
+                  return await fs.writeFile(`./static/person/${slug}/payments.json`,"[".concat(JSON.stringify(payment)),{flag: "w+"})
               }
+              return await fs.writeFile(`./static/person/${slug}/payments.json`,",".concat(JSON.stringify(payment)),{flag: "a"})
             })
             .on('end', resolve)
             .on('error', reject)
         })
       })))
       .then(() => namesFileWriteStream.write("]"))
-      .then(() => Object.entries(paymentWriterStreams).map(([slug, stream]) => stream.write("]")))
+      .then(() => Object.entries(paymentWriterStreams).map(([slug, value]) => fs.writeFile(`./static/person/${slug}/payments.json`,"]",{flag: "a"})))
       .then(() => consola.success("Preprocessed content generated"))
   })
 }
