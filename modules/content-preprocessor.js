@@ -2,6 +2,14 @@ import consola from 'consola'
 
 export default function ContentPreprocessorModule() {
 
+  const { $content } = require('@nuxt/content')
+  const fs = require('graceful-fs').promises
+  const {createReadStream, createWriteStream} = require('graceful-fs')
+  const path = require('path')
+  const csv=require('csvtojson')
+  const { Writable, Readable, pipeline } = require('stream')
+  const { promisify } = require('util')
+
   const extract_fullname = (obj) => [obj.Nombres, obj.Paterno, obj.Materno].join(" ")
   const create_slug = (str) => str.replace(/\s+/g,"_").toLowerCase()
   const extract_name = (obj) => ({
@@ -11,7 +19,6 @@ export default function ContentPreprocessorModule() {
     fullname:extract_fullname(obj),
     slug:create_slug(extract_fullname(obj))
   })
-  const nameTempMap = new Map();
 
   const safe_append_multi_level_object = (obj, ...levels) => {
     if(levels.length <= 1) return obj
@@ -38,30 +45,44 @@ export default function ContentPreprocessorModule() {
     month: month_to_number.get(obj.Mes) ?? 0,
     monthString: obj.Mes
   })
-  var paymentObjects = {};
 
-  const { $content } = require('@nuxt/content')
-  const fs = require('graceful-fs').promises
-  const {createReadStream, createWriteStream} = require('graceful-fs')
-  const path = require('path')
-  const csv=require('csvtojson')
+  class PaymentsWriter extends Writable {
+    constructor(nameTempMap, namesFileWriteStream, paymentWriterStreams) {
+      super()
+      this.nameTempMap = nameTempMap
+      this.namesFileWriteStream = namesFileWriteStream
+      this.paymentWriterStreams = paymentWriterStreams
+    }
+    async _write(chunk, encoding, callback) {
+        const payment = JSON.parse(chunk)
+        const nameObj = extract_name(payment)
+        if(!this.nameTempMap.has(nameObj.slug)){
+          this.nameTempMap.set(nameObj.slug, true);
+          if(this.nameTempMap.size == 1) this.namesFileWriteStream.write(JSON.stringify(nameObj))
+          else this.namesFileWriteStream.write(",".concat(JSON.stringify(nameObj)))
+          if(this.nameTempMap.size % 1000 == 0) consola.info("processed", this.nameTempMap.size, "names")
+        }
+        const slug = create_slug(extract_fullname(payment))
+        if (!(slug in this.paymentWriterStreams)) {
+          this.paymentWriterStreams[slug] = true
+          await fs.mkdir(`./static/person/${slug}`, {recursive:true})
+          await fs.writeFile(`./static/person/${slug}/payments.json`,"[".concat(JSON.stringify(payment)),{flag: "w+"})
+        } else {
+          await fs.writeFile(`./static/person/${slug}/payments.json`,",".concat(JSON.stringify(payment)),{flag: "a"})
+        }
+        callback()
+    }
+  }
+  const paymentFilesCloser = new Writable({
+    async write(slug, encoding, callback) {
+      await fs.writeFile(`./static/person/${slug}/payments.json`,"]",{flag: "a"})
+      callback()
+    }
+  })
 
   this.nuxt.hook('build:before', async builder => {
     consola.info("Preprocessing content")
-    const process_dump = dump => {
-      const namesWithRepetitions = dump.map(extract_name)
-      namesWithRepetitions.forEach( (nameObj) => {
-        if(!nameTempMap.has(nameObj.slug)){
-            nameTempMap.set(nameObj.slug, true);
-            //nameObjects.push(nameObj)
-        }
-      })
-      dump.forEach( (payment) => {
-        const slug = create_slug(extract_fullname(payment))
-        const date = extract_date(payment)
-        paymentObjects = safe_append_multi_level_object(paymentObjects, slug, date.year, date.month, payment)
-      })
-    }
+    const nameTempMap = new Map();
     const namesFileWriteStream = createWriteStream('./content/names.json',{flags: "w+"})
     const paymentWriterStreams = {}
     const content_src = 'content_src'
@@ -74,30 +95,13 @@ export default function ContentPreprocessorModule() {
           const readStream = createReadStream(path.join(content_src,file), 'latin1')
           readStream
             .pipe(csv({delimiter: ";",checkType:true}))
-            .on('data', async (data) => {
-              const payment = JSON.parse(data)
-              const nameObj = extract_name(payment)
-              if(!nameTempMap.has(nameObj.slug)){
-                nameTempMap.set(nameObj.slug, true);
-                if(nameTempMap.size == 1) namesFileWriteStream.write(JSON.stringify(nameObj))
-                else namesFileWriteStream.write(",".concat(JSON.stringify(nameObj)))
-                if(nameTempMap.size % 1000 == 0) consola.info("processed",nameTempMap.size,"names")
-              }
-              const slug = create_slug(extract_fullname(payment))
-              const date = extract_date(payment)
-              if (!(slug in paymentWriterStreams)) {
-                paymentWriterStreams[slug] = await fs.mkdir(`./static/person/${slug}`, {recursive:true})
-                  .then(() => true)
-                  return await fs.writeFile(`./static/person/${slug}/payments.json`,"[".concat(JSON.stringify(payment)),{flag: "w+"})
-              }
-              return await fs.writeFile(`./static/person/${slug}/payments.json`,",".concat(JSON.stringify(payment)),{flag: "a"})
-            })
-            .on('end', resolve)
+            .pipe(new PaymentsWriter(nameTempMap, namesFileWriteStream, paymentWriterStreams))
+            .on('finish', resolve)
             .on('error', reject)
         })
       })))
       .then(() => namesFileWriteStream.write("]"))
-      .then(() => Object.entries(paymentWriterStreams).map(([slug, value]) => fs.writeFile(`./static/person/${slug}/payments.json`,"]",{flag: "a"})))
+      .then(() => promisify(pipeline)(Readable.from(Object.keys(paymentWriterStreams)),paymentFilesCloser))
       .then(() => consola.success("Preprocessed content generated"))
   })
 }
