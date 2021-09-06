@@ -7,8 +7,7 @@ export default function ContentPreprocessorModule() {
   const {createReadStream, createWriteStream} = require('graceful-fs')
   const path = require('path')
   const csv=require('csvtojson')
-  const { Writable, Readable, pipeline } = require('stream')
-  const { promisify } = require('util')
+  const { Writable } = require('stream')
 
   const extract_fullname = (obj) => [obj.Nombres, obj.Paterno, obj.Materno].join(" ")
   const create_slug = (str) => str.replace(/\s+/g,"_").toLowerCase()
@@ -63,22 +62,21 @@ export default function ContentPreprocessorModule() {
           if(this.nameTempMap.size % 1000 == 0) consola.info("processed", this.nameTempMap.size, "names")
         }
         const slug = create_slug(extract_fullname(payment))
+        const date = extract_date(payment)
+        let previousPayments
         if (!(slug in this.paymentWriterStreams)) {
           this.paymentWriterStreams[slug] = true
           await fs.mkdir(`./static/person/${slug}`, {recursive:true})
-          await fs.writeFile(`./static/person/${slug}/payments.json`,"[".concat(JSON.stringify(payment)),{flag: "w+"})
+          previousPayments = {}
         } else {
-          await fs.writeFile(`./static/person/${slug}/payments.json`,",".concat(JSON.stringify(payment)),{flag: "a"})
-        }
+          previousPayments = JSON.parse(await fs.readFile(`./static/person/${slug}/payments.json`))
+       }
+       const newPayments = safe_append_multi_level_object(previousPayments, slug, date.year, date.month, payment)
+       await fs.writeFile(`./static/person/${slug}/payments.json`,JSON.stringify(newPayments),{flag: "w+"})
+
         callback()
     }
   }
-  const paymentFilesCloser = new Writable({
-    async write(slug, encoding, callback) {
-      await fs.writeFile(`./static/person/${slug}/payments.json`,"]",{flag: "a"})
-      callback()
-    }
-  })
 
   this.nuxt.hook('build:before', async builder => {
     consola.info("Preprocessing content")
@@ -101,7 +99,6 @@ export default function ContentPreprocessorModule() {
         })
       })))
       .then(() => namesFileWriteStream.write("]"))
-      .then(() => promisify(pipeline)(Readable.from(Object.keys(paymentWriterStreams)),paymentFilesCloser))
       .then(() => consola.success("Preprocessed content generated"))
   })
 }

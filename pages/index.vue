@@ -28,7 +28,7 @@ export default {
   methods: {
     async getMoney(slug) {
       const data = await this.$http.$get(`/person/${slug}/payments.json`)
-      this.money = data
+      this.money = data[slug]
     }
   },
   data: () => ({
@@ -39,7 +39,6 @@ export default {
   watch: {
     async searchedName() {
       const names = await this.$content('names').search('fullname',this.searchedName).limit(10).fetch()
-      console.log(names)
       this.persons = names
     }
   }
