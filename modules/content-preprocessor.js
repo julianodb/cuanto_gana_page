@@ -2,7 +2,6 @@ import consola from 'consola'
 
 export default function ContentPreprocessorModule() {
 
-  const { $content } = require('@nuxt/content')
   const fs = require('graceful-fs').promises
   const {createReadStream, createWriteStream} = require('graceful-fs')
   const path = require('path')
@@ -10,7 +9,7 @@ export default function ContentPreprocessorModule() {
   const { Writable } = require('stream')
 
   const extract_fullname = (obj) => [obj.Nombres, obj.Paterno, obj.Materno].join(" ")
-  const create_slug = (str) => str.replace(/\s+/g,"_").toLowerCase()
+  const create_slug = (str) => str.replace(/[^\p{L}]+/gu,"_").toLowerCase()
   const extract_name = (obj) => ({
     name:obj.Nombres,
     surname1:obj.Paterno,
@@ -46,11 +45,11 @@ export default function ContentPreprocessorModule() {
   })
 
   class PaymentsWriter extends Writable {
-    constructor(nameTempMap, namesFileWriteStream, paymentWriterStreams) {
+    constructor(nameTempMap, namesFileWriteStream, paymentTempMap) {
       super()
       this.nameTempMap = nameTempMap
       this.namesFileWriteStream = namesFileWriteStream
-      this.paymentWriterStreams = paymentWriterStreams
+      this.paymentTempMap = paymentTempMap
     }
     async _write(chunk, encoding, callback) {
         const payment = JSON.parse(chunk)
@@ -64,8 +63,8 @@ export default function ContentPreprocessorModule() {
         const slug = create_slug(extract_fullname(payment))
         const date = extract_date(payment)
         let previousPayments
-        if (!(slug in this.paymentWriterStreams)) {
-          this.paymentWriterStreams[slug] = true
+        if (!this.paymentTempMap.has(slug)) {
+          this.paymentTempMap.set(slug,true)
           await fs.mkdir(`./static/person/${slug}`, {recursive:true})
           previousPayments = {}
         } else {
@@ -82,18 +81,19 @@ export default function ContentPreprocessorModule() {
     consola.info("Preprocessing content")
     const nameTempMap = new Map();
     const namesFileWriteStream = createWriteStream('./content/names.json',{flags: "w+"})
-    const paymentWriterStreams = {}
+    const paymentTempMap = new Map();
     const content_src = 'content_src'
+
+    namesFileWriteStream.write('[')
     return await fs.readdir(content_src)
       .then(files => files.filter(file => path.extname(file).toLowerCase() === ".csv"))
       .then(files => Promise.all(files.map(file => {
-        consola.info("Processing file ", file)
-        namesFileWriteStream.write('[')
+        consola.info("Processing file", file)
         return new Promise((resolve,reject) => {
           const readStream = createReadStream(path.join(content_src,file), 'latin1')
           readStream
             .pipe(csv({delimiter: ";",checkType:true}))
-            .pipe(new PaymentsWriter(nameTempMap, namesFileWriteStream, paymentWriterStreams))
+            .pipe(new PaymentsWriter(nameTempMap, namesFileWriteStream, paymentTempMap))
             .on('finish', resolve)
             .on('error', reject)
         })
