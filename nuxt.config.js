@@ -38,8 +38,7 @@ export default {
   modules: [
     '@nuxt/http',
     'nuxt-buefy',
-    '@nuxt/content',
-    '~/modules/content-preprocessor'
+    '@nuxt/content'
   ],
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
@@ -49,11 +48,10 @@ export default {
     port: 3001
   },
   generate: {
-    routes() {
-      const { $content } = require('@nuxt/content')
-      return $content('names').fetch().then(names => {
-        return names.map(n => n.slug)
-      })
+    cache: {
+      ignore: [
+        'content_src'
+      ]
     }
   },
   content: {
