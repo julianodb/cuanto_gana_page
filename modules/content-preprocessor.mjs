@@ -3,44 +3,16 @@ import fs from 'graceful-fs'
 import path from 'path'
 import csv from 'csvtojson'
 import { Writable } from 'stream'
+import ContrataPayment from './ContrataPayment.mjs'
 
 const fsPromises = fs.promises
 const {createReadStream, createWriteStream} = fs
-const extract_fullname = (obj) => [obj.Nombres, obj.Paterno, obj.Materno].join(" ")
-const create_slug = (str) => str.replace(/[^\p{L}]+/gu,"_").toLowerCase()
-const extract_name = (obj) => ({
-  name:obj.Nombres,
-  surname1:obj.Paterno,
-  surname2:obj.Materno,
-  fullname:extract_fullname(obj),
-  slug:create_slug(extract_fullname(obj))
-})
 
 const safe_append_multi_level_object = (obj, ...levels) => {
   if(levels.length <= 1) return obj
   if(levels.length == 2) return {...obj, [levels[0]]: levels[1]}
   if(levels.length > 2) return {...obj, [levels[0]]: safe_append_multi_level_object((obj[levels[0]] || {}), ...levels.slice(1))}
 }
-
-const month_to_number = new Map([
-  ["Enero", 1],
-  ["Febrero", 2],
-  ["Marzo", 3],
-  ["Abril", 4],
-  ["Mayo", 5],
-  ["Junio", 6],
-  ["Julio", 7],
-  ["Agosto", 8],
-  ["Septiembre", 9],
-  ["Octubre", 10],
-  ["Noviembre", 11],
-  ["Diciembre", 12]
-])
-const extract_date = (obj) => ({
-  year: obj.anyo,
-  month: month_to_number.get(obj.Mes) ?? 0,
-  monthString: obj.Mes
-})
 
 class PaymentsWriter extends Writable {
   constructor(nameTempMap, namesFileWriteStream, paymentTempMap) {
@@ -50,31 +22,28 @@ class PaymentsWriter extends Writable {
     this.paymentTempMap = paymentTempMap
   }
   async _write(chunk, encoding, callback) {
-    const payment = JSON.parse(chunk)
-    const nameObj = extract_name(payment)
+    const payment = new ContrataPayment(JSON.parse(chunk))
+    const nameObj = {fullName:payment.fullName, slug:payment.slug}
     if(!this.nameTempMap.has(nameObj.slug)){
       this.nameTempMap.set(nameObj.slug, true);
       if(this.nameTempMap.size == 1) this.namesFileWriteStream.write(JSON.stringify(nameObj))
       else this.namesFileWriteStream.write(",".concat(JSON.stringify(nameObj)))
       if(this.nameTempMap.size % 1000 == 0) consola.info("processed", this.nameTempMap.size, "names")
     }
-    const slug = create_slug(extract_fullname(payment))
-    const date = extract_date(payment)
     let previousPayments
-    if (!this.paymentTempMap.has(slug)) {
-      this.paymentTempMap.set(slug,true)
-      await fsPromises.mkdir(`./static/person/${slug}`, {recursive:true})
+    if (!this.paymentTempMap.has(payment.slug)) {
+      this.paymentTempMap.set(payment.slug,true)
+      await fsPromises.mkdir(`./static/person/${payment.slug}`, {recursive:true})
       previousPayments = {}
     } else try {
-      previousPayments = JSON.parse(await fsPromises.readFile(`./static/person/${slug}/payments.json`))
-    }
-    catch (error) {
-      consola.error("error reading",`./static/person/${slug}/payments.json`)
+      previousPayments = JSON.parse(await fsPromises.readFile(`./static/person/${payment.slug}/payments.json`))
+    } catch (error) {
+      consola.error("error processing",`./static/person/${payment.slug}/payments.json`)
       consola.error(error.message)
       previousPayments = {}
     }
-    const newPayments = safe_append_multi_level_object(previousPayments, slug, date.year, date.month, payment)
-    await fsPromises.writeFile(`./static/person/${slug}/payments.json`,JSON.stringify(newPayments),{flag: "w+"})
+    const newPayments = safe_append_multi_level_object(previousPayments, payment.slug, payment.year, payment.month, payment)
+    await fsPromises.writeFile(`./static/person/${payment.slug}/payments.json`,JSON.stringify(newPayments),{flag: "w+"})
     callback()
   }
 }

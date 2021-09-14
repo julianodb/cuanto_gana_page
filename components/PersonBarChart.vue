@@ -36,19 +36,12 @@ export default {
       return Object.entries(this.money)
         .reduce((acc,[year, monthObj])=> [...acc,
           Object.entries(monthObj)
-            .map(([month,payment])=>({year: payment.anyo,
-              month: payment.Mes,
-              salaryBeforeTaxes: payment.remuneracionbruta_mensual,
-              salaryAfterTaxes: payment.remuliquida_mensual,
-              bonusDayTime: payment["Pago extra diurnas"],
-              bonusNightTime: payment["Pago extra nocturnas"],
-              bonusHolidays: payment["Pago extra festivas"]
-            }))
+            .map(([month,payment])=>payment)
         ],[]).flat()
     },
     paymentDataset: function() {
       return {
-        labels: this.paymentsArray.map(payment => [payment.month, payment.year].join(" / ")),
+        labels: this.paymentsArray.map(payment => [payment.monthString, payment.year].join(" / ")),
         datasets: [
           {
             label: 'Remuneración Bruta Mensual',

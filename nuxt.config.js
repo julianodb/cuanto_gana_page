@@ -55,6 +55,6 @@ export default {
     }
   },
   content: {
-    fullTextSearchFields: ['fullname']
+    fullTextSearchFields: ['fullName']
   }
 }

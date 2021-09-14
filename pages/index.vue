@@ -15,7 +15,7 @@
             type="is-primary"
             icon-left="account"
             v-on:click="getMoney(person.slug)">
-                  {{person.fullname}}
+                  {{person.fullName}}
           </b-button>
       </div>
   </div>
@@ -38,7 +38,10 @@ export default {
   }),
   watch: {
     async searchedName() {
-      const names = await this.$content('names').search('fullname',this.searchedName).limit(10).fetch()
+      const names = await this.$content('names')
+                              .search('fullName',this.searchedName)
+                              .limit(10)
+                              .fetch()
       this.persons = names
     }
   }
