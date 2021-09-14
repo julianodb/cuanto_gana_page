@@ -1,25 +1,32 @@
 <template>
 <div class="container">
-  <div class="container">
-    <b-field label="Name">
-        <b-input v-model="searchedName"></b-input>
-    </b-field>
-  </div>
-  <div
-    class="columns"
-    v-for="person in persons"
-    :key="person.slug">
-      <div class="column is-full">
-          <b-button
-            expanded
-            type="is-primary"
-            icon-left="account"
-            v-on:click="getMoney(person.slug)">
-                  {{person.fullName}}
-          </b-button>
+  <div class="columns">
+    <div class="column is-two-fifths">
+      <div class="container">
+        <b-field label="Nombre">
+            <b-input v-model="searchedName"></b-input>
+        </b-field>
       </div>
+      <br />
+      <div
+        class="columns"
+        v-for="person in persons"
+        :key="person.slug">
+          <div class="column is-full">
+              <b-button
+                expanded
+                type="is-primary"
+                icon-left="account"
+                v-on:click="getMoney(person.slug)">
+                      {{person.fullName}}
+              </b-button>
+          </div>
+      </div>
+    </div>
+    <div class="column">
+      <person-bar-chart :money="money" />
+    </div>
   </div>
-  <person-bar-chart :money="money" />
 </div>
 </template>
 

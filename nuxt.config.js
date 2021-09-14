@@ -6,7 +6,7 @@ export default {
   head: {
     title: 'cuanto_gana_page',
     htmlAttrs: {
-      lang: 'en'
+      lang: 'es'
     },
     meta: [
       { charset: 'utf-8' },
