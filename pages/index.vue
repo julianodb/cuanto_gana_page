@@ -11,14 +11,14 @@
       <div
         class="columns"
         v-for="person in persons"
-        :key="person.slug">
+        :key="person">
           <div class="column is-full">
               <b-button
                 expanded
                 type="is-primary"
                 icon-left="account"
-                v-on:click="getMoney(person.slug)">
-                      {{person.fullName}}
+                v-on:click="getMoney(person)">
+                      {{person.replace("_"," ")}}
               </b-button>
           </div>
       </div>
@@ -45,11 +45,15 @@ export default {
   }),
   watch: {
     async searchedName() {
-      const names = await this.$content('names')
-                              .search('fullName',this.searchedName)
-                              .limit(10)
-                              .fetch()
-      this.persons = names
+      const maxChars = this.searchedName.length
+      if(maxChars <= 0) return this.persons = []
+      const slug = this.searchedName.replace(/[^\p{L}]+/gu,"_").toLowerCase()
+      const searchTerm = slug.slice(0,1)
+      //try
+      const index = await this.$http.$get(`/name_search/${searchTerm}/index.json`)
+      //if(index.children.length == 0)
+      const names = await this.$http.$get(`/name_search/${searchTerm}/0.json`)
+      this.persons = names.filter(n => n.startsWith(slug))
     }
   }
 }

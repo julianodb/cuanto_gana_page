@@ -19,7 +19,7 @@ const update_list = async (path, newList, index, listsMetadata) => {
   if (listsMetadata.length <= index) listsMetadata.push(metadata_from_list(newList))
   else listsMetadata[index] = metadata_from_list(newList)
 }
-const treeThreshold = 25
+const treeThreshold = 100
 const rootPath = "./static/name_search"
 
 class PaymentsWriter extends Writable {
@@ -49,7 +49,7 @@ class PaymentsWriter extends Writable {
     await fsPromises.writeFile(`./static/person/${payment.slug}/payments.json`,JSON.stringify(newPayments),{flag: "w+"})
 
     // names
-    const name = payment.cleanFullName
+    const name = payment.slug
 
     if(this.nameTempMap.has(payment.slug)) {callback(); return;}
     this.nameTempMap.set(payment.slug, true);
