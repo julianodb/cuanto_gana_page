@@ -18,7 +18,7 @@
                 type="is-primary"
                 icon-left="account"
                 v-on:click="getMoney(person)">
-                      {{person.replace("_"," ")}}
+                      {{person.replace(/_/gu," ").replace(/([\S])([\S]*)/gu, (l0,l1,l2) => `${l1.toUpperCase()}${l2.toLowerCase()}`)}}
               </b-button>
           </div>
       </div>
@@ -52,8 +52,13 @@ export default {
       //try
       const index = await this.$http.$get(`/name_search/${searchTerm}/index.json`)
       //if(index.children.length == 0)
-      const names = await this.$http.$get(`/name_search/${searchTerm}/0.json`)
-      this.persons = names.filter(n => n.startsWith(slug))
+      let names = []
+      for(const [i, list] of index.listsMetadata.entries()) {
+        const newNames = await this.$http.$get(`/name_search/${searchTerm}/${i}.json`)
+        names = names.concat(newNames).filter(n => n.startsWith(slug))
+        if(names.length >= 10) break
+      }
+      this.persons = names
     }
   }
 }
