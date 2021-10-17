@@ -1,5 +1,5 @@
 const extract_fullname = (obj) => [obj.Nombres, obj.Paterno, obj.Materno].join(" ")
-const create_slug_from_full_name = (str) => str.replace(/[^\p{L}]+/gu,"_").toLowerCase()
+const replance_non_alpha_characters = (str, replacement="_") => str.replace(/[^\p{L}]+/gu,replacement)
 const month_to_number = new Map([
   ["Enero", 1],
   ["Febrero", 2],
@@ -82,7 +82,8 @@ export default class ContrataPayment {
     this.travelExpenses =       rawData["viaticos"]
     this.activated =            rawData["activado"]
     this.fullName =             extract_fullname(rawData)
-    this.slug =                 create_slug_from_full_name(this.fullName)
+    this.cleanFullName =        replance_non_alpha_characters(this.fullName," ").toLowerCase()
+    this.slug =                 replance_non_alpha_characters(this.fullName,"_").toLowerCase()
     this.month =                month_to_number.get(this.monthString) ?? 0
   }
 }
