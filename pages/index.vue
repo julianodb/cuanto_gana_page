@@ -48,17 +48,22 @@ export default {
       const maxChars = this.searchedName.length
       if(maxChars <= 0) return this.persons = []
       const slug = this.searchedName.replace(/[^\p{L}]+/gu,"_").toLowerCase()
-      const searchTerm = slug.slice(0,1)
       //try
-      const index = await this.$http.$get(`/name_search/${searchTerm}/index.json`)
-      //if(index.children.length == 0)
+      let searchTerm = ""
+      let path = ""
+      let index
+      do {
+        searchTerm = slug.slice(0,searchTerm.length + 1)
+        path = searchTerm.split("").reduce((acc,curr) => [...acc, acc[acc.length-1]+curr], [""]).slice(1).join("/")
+        index = await this.$http.$get(`/name_search/${path}/index.json`)
+      } while(searchTerm.length < maxChars && index.children.length > 0)
       let names = []
       for(const [i, list] of index.listsMetadata.entries()) {
-        const newNames = await this.$http.$get(`/name_search/${searchTerm}/${i}.json`)
-        names = names.concat(newNames).filter(n => n.startsWith(slug))
+        const newNames = await this.$http.$get(`/name_search/${path}/${i}.json`)
+        names = names.concat(newNames).filter(n => n.includes(slug))
         if(names.length >= 10) break
       }
-      this.persons = names
+      this.persons = names.slice(0,10)
     }
   }
 }

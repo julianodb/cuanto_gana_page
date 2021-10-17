@@ -54,10 +54,10 @@ export default {
     }
   },
   render: {
-    // Setting up cache for 'static' directory - a day in milliseconds
+    // Setting up cache for 'static' directory - an hour in milliseconds
     // https://web.dev/uses-long-cache-ttl
     static: {
-      maxAge: 60 * 60 * 24,
+      maxAge: 60 * 60,
     },
   },
 }

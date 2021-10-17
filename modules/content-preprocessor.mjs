@@ -19,7 +19,7 @@ const update_list = async (path, newList, index, listsMetadata) => {
   if (listsMetadata.length <= index) listsMetadata.push(metadata_from_list(newList))
   else listsMetadata[index] = metadata_from_list(newList)
 }
-const treeThreshold = 100
+const treeThreshold = 500
 const rootPath = "./static/name_search"
 
 class PaymentsWriter extends Writable {
@@ -27,6 +27,7 @@ class PaymentsWriter extends Writable {
     super()
     this.nameTempMap = nameTempMap
     this.paymentTempMap = paymentTempMap
+    this.processed = 0
   }
   async _write(chunk, encoding, callback) {
 
@@ -50,14 +51,18 @@ class PaymentsWriter extends Writable {
 
     // names
     const name = payment.slug
+    if(++this.processed % 500 == 0) consola.info(`processed ${this.processed} payments. Current person: ${name}`)
 
-    if(this.nameTempMap.has(payment.slug)) {callback(); return;}
-    this.nameTempMap.set(payment.slug, true);
+    if(this.nameTempMap.has(name)) {callback(); return;}
+    this.nameTempMap.set(name, true);
 
-    if(isNaN(name.charCodeAt(0))) {callback(); return;}
-    const initialLetter = name.charAt(0)
-
-    const addNameToBranch = async (nameToAdd, ...levels) => {
+    const addNameToBranch = async (nameToAdd, offset=0, ...levels) => {
+      const update_children = async (index, tree) => {
+        for(const child in tree) {
+          for(const childName of tree[child]) await addNameToBranch(childName.name, childName.offset, ...levels, child)
+          if(!index.children.includes(child)) index.children = [...index.children, child].sort()
+        }
+      }
       await fsPromises.mkdir(`${rootPath}/${levels.join("/")}`, {recursive:true})
 
       // get index
@@ -72,41 +77,51 @@ class PaymentsWriter extends Writable {
       let allContent = []
       for(const [i, list] of index.listsMetadata.entries()) {
 
-        if(list.last < wordToAdd && list.count >= treeThreshold && index.countOfNames != treeThreshold) continue
+        // update children with names in current list when treeThreshold is reached
+        if(index.countOfNames == treeThreshold) {
+          const tempTree = JSON.parse(await fsPromises.readFile(`${rootPath}/${levels.join("/")}/temp_tree.json`,{flag:"r"}))
+          await update_children(index, tempTree)
+        }
+
+        if(list.last < wordToAdd && list.count >= treeThreshold) continue
 
         const currListOldContent = JSON.parse(await fsPromises.readFile(`${rootPath}/${levels.join("/")}/${i}.json`))
-        allContent = [...currListOldContent, wordToAdd].sort()
+        allContent = [...new Set([...currListOldContent, wordToAdd])].sort()
         const currListNewContent = allContent.slice(0,treeThreshold)
-
-        // update children
-        if(index.countOfNames == treeThreshold) {
-          const tree = allContent.reduce( (acc, curr) =>{
-            const twoDigit = curr.slice(0,levels.length+1)
-            if (twoDigit in acc && !acc[twoDigit].includes(curr)) acc[twoDigit] = [...acc[twoDigit], curr]
-            else acc[twoDigit] = [curr]
-            return acc
-          }, {})
-          for(const child in tree) {
-            for(const childName of tree[child]) await addNameToBranch(childName, ...levels, child)
-            if(!index.children.includes(child)) index.children = [...index.children, child].sort()
-          }
-        }
 
         if(list.last < wordToAdd  && list.count >= treeThreshold) continue
         await update_list(`${rootPath}/${levels.join("/")}`,currListNewContent, i, index.listsMetadata)
         wordToAdd = allContent[allContent.length-1]
 
       }
+      // add new list if necessary
       if(index.listsMetadata.length == 0 ||
         (index.listsMetadata[index.listsMetadata.length-1].count >= treeThreshold &&
          index.listsMetadata[index.listsMetadata.length-1].last != wordToAdd)) {
           await update_list(`${rootPath}/${levels.join("/")}`,[wordToAdd], index.listsMetadata.length, index.listsMetadata)
         }
-      if(index.countOfNames >= treeThreshold) await addNameToBranch(nameToAdd, ...levels, nameToAdd.slice(0,levels.length+1))
+      // update children with new name if necessary
+      if(index.countOfNames >= treeThreshold) await update_children(index, {[nameToAdd.slice(offset,offset+levels.length+1)]: [{name:nameToAdd, offset:offset}]})
+      else { //create/update temp tree while countOfNames < treeThreshold
+        let tempTree
+        const tempTreeCandidate = await fsPromises.readFile(`${rootPath}/${levels.join("/")}/temp_tree.json`,{flag:"a+"})
+        if(tempTreeCandidate=="") tempTree = {}
+        else tempTree = JSON.parse(tempTreeCandidate)
+
+        const twoDigit = nameToAdd.slice(offset,offset+levels.length+1)
+        const nameObj = {name:nameToAdd, offset:offset}
+        if (twoDigit in tempTree && !tempTree[twoDigit].includes(nameObj)) tempTree[twoDigit] = [...tempTree[twoDigit], nameObj]
+        else tempTree[twoDigit] = [nameObj]
+        await fsPromises.writeFile(`${rootPath}/${levels.join("/")}/temp_tree.json`,JSON.stringify(tempTree),{flag: "w"})
+      }
 
       await fsPromises.writeFile(`${rootPath}/${levels.join("/")}/index.json`,JSON.stringify(index),{flag: "w"})
     }
-    await addNameToBranch(name, initialLetter)
+    for(const word of name.split("_")) {
+      const offset = name.indexOf(word)
+      if(isNaN(name.charCodeAt(offset))) continue;
+      await addNameToBranch(name, offset, name.charAt(offset))
+    }
     callback()
   }
 }
