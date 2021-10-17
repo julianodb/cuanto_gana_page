@@ -37,8 +37,7 @@ export default {
   // Modules: https://go.nuxtjs.dev/config-modules
   modules: [
     '@nuxt/http',
-    'nuxt-buefy',
-    '@nuxt/content'
+    'nuxt-buefy'
   ],
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
@@ -54,7 +53,11 @@ export default {
       ]
     }
   },
-  content: {
-    fullTextSearchFields: ['fullName']
-  }
+  render: {
+    // Setting up cache for 'static' directory - a day in milliseconds
+    // https://web.dev/uses-long-cache-ttl
+    static: {
+      maxAge: 60 * 60 * 24,
+    },
+  },
 }
