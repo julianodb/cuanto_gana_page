@@ -51,7 +51,7 @@ class PaymentsWriter extends Writable {
 
     // names
     const name = payment.slug
-    if(++this.processed % 500 == 0) consola.info(`processed ${this.processed} payments. Current person: ${name}`)
+    if(++this.processed % 1000 == 0) consola.info(`processed ${this.processed} payments. Current person: ${name}`)
 
     if(this.nameTempMap.has(name)) {callback(); return;}
     this.nameTempMap.set(name, true);
@@ -72,16 +72,16 @@ class PaymentsWriter extends Writable {
       else index = JSON.parse(indexCandidate)
       index.countOfNames++
 
+      // update children with names in current list when treeThreshold is reached
+      if(index.countOfNames == treeThreshold) {
+        const tempTree = JSON.parse(await fsPromises.readFile(`${rootPath}/${levels.join("/")}/temp_tree.json`,{flag:"r"}))
+        await update_children(index, tempTree)
+      }
+
       // update index
       let wordToAdd = nameToAdd
       let allContent = []
       for(const [i, list] of index.listsMetadata.entries()) {
-
-        // update children with names in current list when treeThreshold is reached
-        if(index.countOfNames == treeThreshold) {
-          const tempTree = JSON.parse(await fsPromises.readFile(`${rootPath}/${levels.join("/")}/temp_tree.json`,{flag:"r"}))
-          await update_children(index, tempTree)
-        }
 
         if(list.last < wordToAdd && list.count >= treeThreshold) continue
 
@@ -138,9 +138,9 @@ await Promise.all(alphabet.map(async letter => {
 
 const srcFiles = (await fsPromises.readdir(content_src))
                     .filter(file => path.extname(file).toLowerCase() === ".csv")
-await Promise.all(srcFiles.map(file => {
+for(const file of srcFiles) {
   consola.info("Processing file", file)
-  return new Promise((resolve,reject) => {
+  await new Promise((resolve,reject) => {
     const readStream = createReadStream(path.join(content_src,file), 'latin1')
     readStream
       .pipe(csv({delimiter: ";",checkType:true}))
@@ -148,6 +148,6 @@ await Promise.all(srcFiles.map(file => {
       .on('finish', resolve)
       .on('error', reject)
   })
-}))
+}
 consola.success("Preprocessed content generated")
 
