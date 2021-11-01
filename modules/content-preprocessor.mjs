@@ -48,58 +48,63 @@ class NameWriter extends Writable {
         if(!index.children.includes(partialWord)) index.children = [...index.children, partialWord].sort()
       }
     }
-    // get index
-    let index
-    const indexCandidate = await fsPromises.readFile(`${this.path}/index.json`,{flag:"a+"})
-    if(indexCandidate=="") index = {'countOfNames': 0, 'listsMetadata':[], 'children':[]}
-    else index = JSON.parse(indexCandidate)
-    index.countOfNames++
+    try {
+      // get index
+      let index
+      const indexCandidate = await fsPromises.readFile(`${this.path}/index.json`,{flag:"a+"})
+      if(indexCandidate=="") index = {'countOfNames': 0, 'listsMetadata':[], 'children':[]}
+      else index = JSON.parse(indexCandidate)
+      index.countOfNames++
 
-    // update children with names in current list when treeThreshold is reached
-    if(index.countOfNames == treeThreshold) {
-      const tempTree = JSON.parse(await fsPromises.readFile(`${this.path}/temp_tree.json`,{flag:"r"}))
-      await update_children(index, tempTree)
-    }
-
-    // update index
-    let wordToAdd = name
-    let allContent = []
-    for(const [i, list] of index.listsMetadata.entries()) {
-
-      if(list.last < wordToAdd && list.count >= treeThreshold) continue
-
-      const currListOldContent = JSON.parse(await fsPromises.readFile(`${this.path}/${i}.json`))
-      allContent = [...new Set([...currListOldContent, wordToAdd])].sort()
-      const currListNewContent = allContent.slice(0,treeThreshold)
-
-      if(list.last < wordToAdd  && list.count >= treeThreshold) continue
-      await update_list(`${this.path}`,currListNewContent, i, index.listsMetadata) //TODO: update this ?
-      wordToAdd = allContent[allContent.length-1]
-
-    }
-    // add new list if necessary
-    if(index.listsMetadata.length == 0 ||
-      (index.listsMetadata[index.listsMetadata.length-1].count >= treeThreshold &&
-       index.listsMetadata[index.listsMetadata.length-1].last != wordToAdd)) {
-        await update_list(`${this.path}`,[wordToAdd], index.listsMetadata.length, index.listsMetadata)
+      // update children with names in current list when treeThreshold is reached
+      if(index.countOfNames == treeThreshold) {
+        const tempTree = JSON.parse(await fsPromises.readFile(`${this.path}/temp_tree.json`,{flag:"r"}))
+        await update_children(index, tempTree)
       }
-    // update children with new name if necessary
-    if(index.countOfNames >= treeThreshold) await update_children(index, {[name.slice(offset,offset+this.levels.length+1)]: [{name:name, offset:offset}]})
-    else { //create/update temp tree while countOfNames < treeThreshold
-      let tempTree
-      const tempTreeCandidate = await fsPromises.readFile(`${this.path}/temp_tree.json`,{flag:"a+"})
-      if(tempTreeCandidate=="") tempTree = {}
-      else tempTree = JSON.parse(tempTreeCandidate)
 
-      const partialWord = name.slice(offset, offset+this.levels.length+1)
-      const nameObj = {name:name, offset:offset}
-      if (partialWord in tempTree && !tempTree[partialWord].includes(nameObj)) tempTree[partialWord] = [...tempTree[partialWord], nameObj]
-      else tempTree[partialWord] = [nameObj]
-      await fsPromises.writeFile(`${this.path}/temp_tree.json`,JSON.stringify(tempTree),{flag: "w"})
+      // update index
+      let wordToAdd = name
+      let allContent = []
+      for(const [i, list] of index.listsMetadata.entries()) {
+
+        if(list.last < wordToAdd && list.count >= treeThreshold) continue
+
+        const currListOldContent = JSON.parse(await fsPromises.readFile(`${this.path}/${i}.json`))
+        allContent = [...new Set([...currListOldContent, wordToAdd])].sort()
+        const currListNewContent = allContent.slice(0,treeThreshold)
+
+        if(list.last < wordToAdd  && list.count >= treeThreshold) continue
+        await update_list(`${this.path}`,currListNewContent, i, index.listsMetadata) //TODO: update this ?
+        wordToAdd = allContent[allContent.length-1]
+
+      }
+      // add new list if necessary
+      if(index.listsMetadata.length == 0 ||
+        (index.listsMetadata[index.listsMetadata.length-1].count >= treeThreshold &&
+        index.listsMetadata[index.listsMetadata.length-1].last != wordToAdd)) {
+          await update_list(`${this.path}`,[wordToAdd], index.listsMetadata.length, index.listsMetadata)
+        }
+      // update children with new name if necessary
+      if(index.countOfNames >= treeThreshold) await update_children(index, {[name.slice(offset,offset+this.levels.length+1)]: [{name:name, offset:offset}]})
+      else { //create/update temp tree while countOfNames < treeThreshold
+        let tempTree
+        const tempTreeCandidate = await fsPromises.readFile(`${this.path}/temp_tree.json`,{flag:"a+"})
+        if(tempTreeCandidate=="") tempTree = {}
+        else tempTree = JSON.parse(tempTreeCandidate)
+
+        const partialWord = name.slice(offset, offset+this.levels.length+1)
+        const nameObj = {name:name, offset:offset}
+        if (partialWord in tempTree && !tempTree[partialWord].includes(nameObj)) tempTree[partialWord] = [...tempTree[partialWord], nameObj]
+        else tempTree[partialWord] = [nameObj]
+        await fsPromises.writeFile(`${this.path}/temp_tree.json`,JSON.stringify(tempTree),{flag: "w"})
+      }
+
+      await fsPromises.writeFile(`${this.path}/index.json`,JSON.stringify(index),{flag: "w"})
+      callback()
+    } catch (e) {
+      consola.error(e.message)
+      throw e
     }
-
-    await fsPromises.writeFile(`${this.path}/index.json`,JSON.stringify(index),{flag: "w"})
-    callback()
   }
 }
 class PaymentsWriter extends Writable {
