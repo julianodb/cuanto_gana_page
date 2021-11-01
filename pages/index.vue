@@ -56,7 +56,8 @@ export default {
         searchTerm = slug.slice(0,searchTerm.length + 1)
         path = searchTerm.split("").reduce((acc,curr) => [...acc, acc[acc.length-1]+curr], [""]).slice(1).join("/")
         index = await this.$http.$get(`/name_search/${path}/index.json`)
-      } while(searchTerm.length < maxChars && index.children.length > 0 && searchTerm in index.children)
+      } while(searchTerm.length < maxChars && index.children.length > 0 && index.children.includes(slug.slice(0,searchTerm.length + 1)))
+      if(searchTerm.length < maxChars && index.children.length > 0) return this.persons = []
       let names = []
       for(const [i, list] of index.listsMetadata.entries()) {
         const newNames = await this.$http.$get(`/name_search/${path}/${i}.json`)
