@@ -17,7 +17,7 @@
     "core-js": "^3.15.1",
     "csvtojson": "^2.0.10",
     "graceful-fs": "^4.2.8",
-    "nuxt": "^2.15.7",
+    "nuxt": "^3.1.0",
     "nuxt-buefy": "^0.4.8",
     "vue-chartjs": "^3.5.1"
   },
